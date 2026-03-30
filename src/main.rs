@@ -36,6 +36,7 @@ struct Board {
 struct Game {
     board: Board,
     stats: GameStats,
+    moves: Vec<u64>,
 }
 
 impl Game {
@@ -43,20 +44,27 @@ impl Game {
         Game {
             board: Board::new(BOARD_SIZE, START_POSITION, WIN_POSITION, LOOSE_POSITION),
             stats: GameStats { wins: 0, looses: 0 },
+            moves: vec![],
         }
     }
 
     fn run(&mut self, iterations: u64) {
         for _ in 0..iterations {
             self.board.reset();
+            let mut moves: u64 = 0;
             loop {
                 self.board.next_move();
+                moves = moves + 1;
                 if self.board.current == self.board.win {
                     self.stats.wins += 1;
+                    self.moves.push(moves);
+                    //println!("Number of moves: {:?}", self.moves);
                     break;
                 }
                 if self.board.current == self.board.loose {
                     self.stats.looses += 1;
+                    self.moves.push(moves);
+                    //println!("Number of moves: {:?}", self.moves);
                     break;
                 }
             }
@@ -78,14 +86,20 @@ enum Direction {
 }
 const BOARD_SIZE: i32 = 100; // Chess board size BOARD_SIZE x BOARD_SIZE
 const START_POSITION: Point = Point { x: 0, y: 0 };
-const WIN_POSITION: Point = Point { x: 99, y: 99 };
-const LOOSE_POSITION: Point = Point { x: 99, y: 0 };
+const WIN_POSITION: Point = Point {
+    x: BOARD_SIZE - 1,
+    y: BOARD_SIZE - 1,
+};
+const LOOSE_POSITION: Point = Point {
+    x: BOARD_SIZE - 1,
+    y: 0,
+};
 
 impl Board {
     fn new(size: i32, start: Point, win: Point, loose: Point) -> Self {
         Board {
             size,
-            cells: populate_board(size),
+            //cells: populate_board(size),
             start: start.clone(),
             current: start.clone(),
             win,
@@ -214,6 +228,9 @@ fn main() {
     let total = game.stats.wins + game.stats.looses;
     let probability = game.stats.wins as f64 / total as f64;
     println!("Win probability ({iterations} iterations): {probability:}");
+    let sum: u64 = game.moves.iter().sum();
+    let cnt: u64 = game.moves.len() as u64;
+    println!("Average move count: {:?}", sum / cnt);
 }
 
 #[cfg(test)]
