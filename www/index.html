@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knight Random Walk — Skrolli Problem</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: monospace;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+      gap: 20px;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      color: #a0c4ff;
+      text-align: center;
+    }
+
+    .problem {
+      font-size: 0.8rem;
+      color: #888;
+      text-align: center;
+      max-width: 520px;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: flex-end;
+      max-width: 700px;
+    }
+
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 0.75rem;
+      color: #aaa;
+    }
+
+    input[type="number"] {
+      width: 90px;
+      background: #0d0d1f;
+      border: 1px solid #444;
+      color: #e0e0e0;
+      padding: 6px 8px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      border-radius: 4px;
+    }
+
+    input[type="range"] {
+      width: 120px;
+      accent-color: #a0c4ff;
+    }
+
+    button {
+      padding: 8px 18px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      border: 1px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #16213e;
+      color: #e0e0e0;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #1a2a5e; }
+    button:disabled { opacity: 0.4; cursor: default; }
+
+    #btn-animate { border-color: #a0c4ff; color: #a0c4ff; }
+    #btn-heatmap { border-color: #ffd166; color: #ffd166; }
+    #btn-stop    { border-color: #ef476f; color: #ef476f; }
+
+    canvas {
+      border: 1px solid #333;
+      image-rendering: pixelated;
+    }
+
+    #stats {
+      font-size: 0.85rem;
+      color: #ccc;
+      text-align: center;
+      min-height: 3.6em;
+      line-height: 1.8;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    #legend-canvas {
+      border: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Knight Random Walk — Skrolli Problem</h1>
+  <p class="problem">
+    A knight starts at the bottom-left (★ win = top-right, ✗ lose = bottom-right).
+    Each turn it picks a random legal move. What is the win probability?
+  </p>
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <label for="size">Board size</label>
+      <input id="size" type="number" value="8" min="3" max="100">
+    </div>
+    <div class="ctrl-group">
+      <label for="iters">Iterations</label>
+      <input id="iters" type="number" value="100000" min="1000" max="10000000">
+    </div>
+    <div class="ctrl-group">
+      <label for="speed">Speed (ms/move): <span id="speed-val">120</span></label>
+      <input id="speed" type="range" value="120" min="0" max="1000" step="10">
+    </div>
+    <button id="btn-animate">Animate</button>
+    <button id="btn-heatmap">Heatmap</button>
+    <button id="btn-stop">Stop</button>
+  </div>
+
+  <canvas id="board"></canvas>
+
+  <div id="stats"></div>
+
+  <div class="legend">
+    <span>cold</span>
+    <canvas id="legend-canvas" width="160" height="16"></canvas>
+    <span>hot</span>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
