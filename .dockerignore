@@ -1,0 +1,5 @@
+target/
+www/pkg/
+.git/
+.gitignore
+CLAUDE.md

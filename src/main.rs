@@ -13,12 +13,14 @@
 // 2b: 50%
 // 2b: 215d1cff21a98027d115c6812f841f936d781b05
 //
-//
 
 use std::io::{self, Write as IoWrite};
 use std::thread;
 use std::time::Duration;
 
+use chess_skrolli_problem::{
+    format_move_stats, heat_color, Board, Game, GameStats, Point, BOARD_SIZE,
+};
 use clap::Parser;
 use crossterm::{
     cursor,
@@ -26,7 +28,6 @@ use crossterm::{
     terminal::{self, ClearType},
     ExecutableCommand, QueueableCommand,
 };
-use rand::prelude::*;
 
 #[derive(Parser)]
 #[command(about = "Knight random walk simulation")]
@@ -52,174 +53,6 @@ struct Cli {
     board_size: Option<i32>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-struct Point {
-    x: i32,
-    y: i32,
-}
-
-#[derive(Debug)]
-struct Board {
-    size: i32,
-    start: Point,
-    current: Point,
-    win: Point,
-    loose: Point,
-    visit_counts: Vec<Vec<u64>>,
-}
-
-struct Game {
-    board: Board,
-    stats: GameStats,
-    moves: Vec<u64>,
-}
-
-impl Game {
-    fn new(size: i32) -> Self {
-        let start = Point { x: 0, y: 0 };
-        let win = Point { x: size - 1, y: size - 1 };
-        let loose = Point { x: size - 1, y: 0 };
-        Game {
-            board: Board::new(size, start, win, loose),
-            stats: GameStats { wins: 0, looses: 0 },
-            moves: vec![],
-        }
-    }
-
-    fn run(&mut self, iterations: u64) {
-        for _ in 0..iterations {
-            self.board.reset();
-            let mut moves: u64 = 0;
-            loop {
-                self.board.next_move();
-                moves += 1;
-                if self.board.current == self.board.win {
-                    self.stats.wins += 1;
-                    self.moves.push(moves);
-                    break;
-                }
-                if self.board.current == self.board.loose {
-                    self.stats.looses += 1;
-                    self.moves.push(moves);
-                    break;
-                }
-            }
-        }
-    }
-
-}
-
-struct GameStats {
-    wins: u64,
-    looses: u64,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum Direction {
-    NORTH = 0,
-    EAST = 1,
-    SOUTH = 2,
-    WEST = 3,
-}
-
-const BOARD_SIZE: i32 = 8;
-
-impl Board {
-    fn new(size: i32, start: Point, win: Point, loose: Point) -> Self {
-        Board {
-            size,
-            start: start.clone(),
-            current: start.clone(),
-            win,
-            loose,
-            visit_counts: vec![vec![0u64; size as usize]; size as usize],
-        }
-    }
-
-    fn reset(&mut self) {
-        self.current = self.start.clone();
-    }
-
-    fn next_move(&mut self) {
-        let mut rng = rand::rng();
-        let valid_moves: Vec<Point> = self.get_valid_moves();
-
-        let p = valid_moves.choose(&mut rng);
-        match p {
-            Some(pp) => {
-                self.current = pp.clone();
-                self.visit_counts[self.current.x as usize][self.current.y as usize] += 1;
-            }
-            None => {
-                panic!("No valid moves")
-            }
-        }
-    }
-
-    fn get_valid_moves(&self) -> Vec<Point> {
-        let mut v = vec![];
-        const VARIANTS: [Direction; 4] = [
-            Direction::NORTH,
-            Direction::EAST,
-            Direction::SOUTH,
-            Direction::WEST,
-        ];
-        for dir in VARIANTS.iter() {
-            match dir {
-                Direction::NORTH => {
-                    let p = Point { x: self.current.x - 1, y: self.current.y + 2 };
-                    if self.is_valid_point(&p) { v.push(p); }
-                    let pp = Point { x: self.current.x + 1, y: self.current.y + 2 };
-                    if self.is_valid_point(&pp) { v.push(pp); }
-                }
-                Direction::EAST => {
-                    let p = Point { x: self.current.x + 2, y: self.current.y - 1 };
-                    if self.is_valid_point(&p) { v.push(p); }
-                    let pp = Point { x: self.current.x + 2, y: self.current.y + 1 };
-                    if self.is_valid_point(&pp) { v.push(pp); }
-                }
-                Direction::SOUTH => {
-                    let p = Point { x: self.current.x - 1, y: self.current.y - 2 };
-                    if self.is_valid_point(&p) { v.push(p); }
-                    let pp = Point { x: self.current.x + 1, y: self.current.y - 2 };
-                    if self.is_valid_point(&pp) { v.push(pp); }
-                }
-                Direction::WEST => {
-                    let p = Point { x: self.current.x - 2, y: self.current.y + 1 };
-                    if self.is_valid_point(&p) { v.push(p); }
-                    let pp = Point { x: self.current.x - 2, y: self.current.y - 1 };
-                    if self.is_valid_point(&pp) { v.push(pp); }
-                }
-            }
-        }
-        v
-    }
-
-    fn is_valid_point(&self, p: &Point) -> bool {
-        p.x >= 0 && p.y >= 0 && p.x < self.size && p.y < self.size
-    }
-}
-
-// ── Visualization helpers ──────────────────────────────────────────────────
-
-/// Map a ratio 0.0–1.0 to a heat color: dark blue → blue → cyan → yellow → red.
-fn heat_color(ratio: f64) -> Color {
-    let r = ratio.clamp(0.0, 1.0);
-    if r < 0.25 {
-        let t = r / 0.25;
-        Color::Rgb { r: 0, g: (t * 100.0) as u8, b: (55.0 + t * 200.0) as u8 }
-    } else if r < 0.5 {
-        let t = (r - 0.25) / 0.25;
-        Color::Rgb { r: 0, g: (100.0 + t * 155.0) as u8, b: (255.0 - t * 255.0) as u8 }
-    } else if r < 0.75 {
-        let t = (r - 0.5) / 0.25;
-        Color::Rgb { r: (t * 255.0) as u8, g: 255, b: 0 }
-    } else {
-        let t = (r - 0.75) / 0.25;
-        Color::Rgb { r: 255, g: (255.0 - t * 255.0) as u8, b: 0 }
-    }
-}
-
 // Above this size, switch to compact single-char-per-cell rendering.
 const COMPACT_THRESHOLD: usize = 20;
 
@@ -235,7 +68,6 @@ fn print_board_state(
     stdout.execute(cursor::MoveTo(0, 0))?;
 
     if compact {
-        // Column header: show every 10th column
         stdout.queue(Print("    "))?;
         for x in 0..size {
             if x % 10 == 0 {
@@ -251,7 +83,6 @@ fn print_board_state(
         stdout.queue(Print("\n"))?;
     }
 
-    // Rows printed top (high y) to bottom (low y)
     for row in (0..size).rev() {
         stdout.queue(Print(format!("{:3} ", row)))?;
         for col in 0..size {
@@ -344,7 +175,6 @@ fn run_heatmap(size: i32, iterations: u64) -> io::Result<()> {
     println!("Running {} iterations...", iterations);
     game.run(iterations);
 
-    // Find max count for normalization
     let max_count = game
         .board
         .visit_counts
@@ -363,13 +193,11 @@ fn run_heatmap(size: i32, iterations: u64) -> io::Result<()> {
         println!("\nHeatmap (visits per cell — blue=cold, red=hot):\n");
     }
 
-    // Column header
     stdout.queue(Print("    "))?;
     if compact {
-        // Show label every 10 columns; each cell is 2 chars wide
         for x in 0..size as usize {
             if x % 10 == 0 {
-                stdout.queue(Print(format!("{:<20}", x)))?; // 10 cols × 2 chars
+                stdout.queue(Print(format!("{:<20}", x)))?;
             }
         }
     } else {
@@ -384,7 +212,8 @@ fn run_heatmap(size: i32, iterations: u64) -> io::Result<()> {
         for col in 0..size as usize {
             let count = game.board.visit_counts[col][row];
             let ratio = count as f64 / max_count as f64;
-            let bg = heat_color(ratio);
+            let (r, g, b) = heat_color(ratio);
+            let bg = Color::Rgb { r, g, b };
             if compact {
                 stdout
                     .queue(SetBackgroundColor(bg))?
@@ -401,13 +230,13 @@ fn run_heatmap(size: i32, iterations: u64) -> io::Result<()> {
         stdout.queue(Print("\n"))?;
     }
 
-    // Legend
     stdout.queue(Print("\nLegend: "))?;
     let steps = 20usize;
     for i in 0..steps {
-        let r = i as f64 / (steps - 1) as f64;
+        let ratio = i as f64 / (steps - 1) as f64;
+        let (r, g, b) = heat_color(ratio);
         stdout
-            .queue(SetBackgroundColor(heat_color(r)))?
+            .queue(SetBackgroundColor(Color::Rgb { r, g, b }))?
             .queue(Print("  "))?
             .queue(ResetColor)?;
     }
@@ -417,34 +246,9 @@ fn run_heatmap(size: i32, iterations: u64) -> io::Result<()> {
     let total = game.stats.wins + game.stats.looses;
     let probability = game.stats.wins as f64 / total as f64;
     println!("Win probability ({} iterations): {:.10}", iterations, probability);
-    print_move_stats(&game.moves);
+    println!("{}", format_move_stats(&game.moves));
 
     Ok(())
-}
-
-fn print_move_stats(moves: &[u64]) {
-    let cnt = moves.len();
-    if cnt == 0 {
-        return;
-    }
-    let sum: u64 = moves.iter().sum();
-    let mean = sum as f64 / cnt as f64;
-    let variance = moves.iter().map(|&m| {
-        let diff = m as f64 - mean;
-        diff * diff
-    }).sum::<f64>() / cnt as f64;
-    let std_dev = variance.sqrt();
-
-    let mut sorted = moves.to_vec();
-    sorted.sort_unstable();
-    let median = if cnt % 2 == 0 {
-        (sorted[cnt / 2 - 1] + sorted[cnt / 2]) as f64 / 2.0
-    } else {
-        sorted[cnt / 2] as f64
-    };
-
-    println!("Move count — avg: {:.1}  median: {:.1}  min: {}  max: {}  std: {:.1}",
-        mean, median, sorted[0], sorted[cnt - 1], std_dev);
 }
 
 fn main() {
@@ -462,40 +266,6 @@ fn main() {
         let total = game.stats.wins + game.stats.looses;
         let probability = game.stats.wins as f64 / total as f64;
         println!("Win probability ({iterations} iterations): {probability:.10}");
-        print_move_stats(&game.moves);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn populate_board(size: i32) -> Vec<Point> {
-        let mut v = vec![];
-        for x in 0..size {
-            for y in 0..size {
-                v.push(Point { x, y });
-            }
-        }
-        v
-    }
-
-    #[test]
-    #[ignore = "cells field removed from Board"]
-    fn test_board_population() {
-        // This test referenced board.cells which is no longer part of Board.
-        assert_eq!(BOARD_SIZE * BOARD_SIZE, populate_board(BOARD_SIZE).len() as i32);
-    }
-
-    #[test]
-    fn test_next_moves() {
-        let start: Point = Point { x: 0, y: 0 };
-        let win: Point = Point { x: 2, y: 2 };
-        let loose: Point = Point { x: 2, y: 0 };
-        let board = Board::new(3, start, win, loose);
-        assert_eq!(
-            board.get_valid_moves(),
-            vec![Point { x: 1, y: 2 }, Point { x: 2, y: 1 }]
-        );
+        println!("{}", format_move_stats(&game.moves));
     }
 }
