@@ -1,6 +1,6 @@
 services:
   chess:
-    build: .
+    image: ghcr.io/frogshead/chess-skrolli-problem:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:80"   # bind only to localhost; terminate TLS at host nginx/Caddy
